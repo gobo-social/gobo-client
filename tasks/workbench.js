@@ -1,6 +1,7 @@
 import FS from "node:fs/promises";
 import FormData from "form-data";
 import { getGOBO, random } from "./helpers.js";
+import { listChannels, Channels, Sidecar } from './channel.js';
 
 const BLUESKY_URL = "https://bsky.app"
 const REDDIT_URL = "https://www.reddit.com"
@@ -24,12 +25,183 @@ const run = async function ( config ) {
 
 const tasks = {
 
+  listChannels: async ( config ) => {
+    const gobo = await getGOBO(config);
+    const name = config.args.name;
+    
+    const list = await listChannels(gobo, name);
+    console.log( list );
+  },
+
+  pauseChannel: async ( config ) => {
+    const gobo = await getGOBO(config);
+    const id = config.args.id;
+    const name = config.args.name;
+    if (id) {
+      const channel = await gobo.channel.get({id});
+      channel.paused = true;
+      await gobo.channel.put(channel);
+    } else if (name) {
+      const list = await listChannels(gobo, name);
+      for ( const channel of list ) {
+        channel.paused = true;
+        await gobo.channel.put(channel);
+      }
+    } else {
+      throw new Error('must specify id or name for target channels');
+    }
+  },
+
+  unpauseChannel: async ( config ) => {
+    const gobo = await getGOBO(config);
+    const id = config.args.id;
+    const name = config.args.name;
+    if (id) {
+      const channel = await gobo.channel.get({id});
+      channel.paused = false;
+      await gobo.channel.put(channel);
+    } else if (name) {
+      const list = await listChannels(gobo, name);
+      for ( const channel of list ) {
+        channel.paused = false;
+        await gobo.channel.put(channel);
+      }
+    } else {
+      throw new Error('must specify id or name for target channels');
+    }
+  },
+
+  stopChannel: async ( config ) => {
+    const gobo = await getGOBO(config);
+    const id = config.args.id;
+    const name = config.args.name;
+    if (id) {
+      const channel = await gobo.channel.get({id});
+      channel.processing = false;
+      await gobo.channel.put(channel);
+    } else if (name) {
+      const list = await listChannels(gobo, name);
+      for ( const channel of list ) {
+        channel.processing = false;
+        await gobo.channel.put(channel);
+      }
+    } else {
+      throw new Error('must specify id or name for target channels');
+    }
+  },
+
+  startChannel: async ( config ) => {
+    const gobo = await getGOBO(config);
+    const id = config.args.id;
+    const name = config.args.name;
+    if (id) {
+      const channel = await gobo.channel.get({id});
+      channel.processing = true;
+      await gobo.channel.put(channel);
+      console.log(channel)
+    } else if (name) {
+      const list = await listChannels(gobo, name);
+      for ( const channel of list ) {
+        channel.processing = true;
+        await gobo.channel.put(channel);
+      }
+    } else {
+      throw new Error('must specify id or name for target channels');
+    }
+  },
+
+  claimChannel: async ( config ) => {
+    const gobo = await getGOBO(config);
+    const id = config.args.id;
+    const name = config.args.name;
+    if (id) {
+      const channel = await gobo.channel.get({id});
+      channel.claimed = true;
+      await gobo.channel.put(channel);
+    } else if (name) {
+      const list = await listChannels(gobo, name);
+      for ( const channel of list ) {
+        channel.claimed = true;
+        await gobo.channel.put(channel);
+      }
+    } else {
+      throw new Error('must specify id or name for target channels');
+    }
+  },
+
+  unclaimChannel: async ( config ) => {
+    const gobo = await getGOBO(config);
+    const id = config.args.id;
+    const name = config.args.name;
+    if (id) {
+      const channel = await gobo.channel.get({id});
+      channel.claimed = false;
+      await gobo.channel.put(channel);
+    } else if (name) {
+      const list = await listChannels(gobo, name);
+      for ( const channel of list ) {
+        channel.claimed = false;
+        await gobo.channel.put(channel);
+      }
+    } else {
+      throw new Error('must specify id or name for target channels');
+    }
+  },
+
+  removeChannel: async ( config ) => {
+    const gobo = await getGOBO(config);
+    const id = config.args.id;
+    if (!id) {
+      throw new Error('must specify id for target channels');
+    }
+    const channel = await gobo.channel.get({id});
+    if (channel) {
+      await gobo.channel.delete(channel);
+    }
+  },
+
+  addChannel: async ( config ) => {
+    const gobo = await getGOBO(config);
+    const name = config.args.name;
+    if (!name) {
+      throw new Error('must specify name for add channel configuration');
+    }
+
+    if ( name === "default" ) {
+      await gobo.channels.post({ content: { name, shards: [0] }});
+      return;
+    }
+    if ( name === "cron" ) {
+      const sidecar = Sidecar.cron;
+      await gobo.channels.post({ content: { name, shards: [0], sidecar }});
+      return;
+    }
+
+    const definition = Channels.definitions[name];
+    if (!definition) {
+      throw new Error(`channel type ${name} lacks a definition template`);
+    }
+
+    const channels = await listChannels(gobo, name);
+    let offset = 0;
+    for ( const channel of channels ) {
+      const last = channel.shards.at(-1);
+      if ( last >= offset ) {
+        offset = last + 1;
+      }
+    }
+
+    const size = definition.size;
+    const shards = Array.from(Array(size).keys(), (value) => value + offset );
+    await gobo.channels.post({ content: { name, shards }});
+  },
+
   customAction: async function (config) {
     const gobo = await getGOBO(config);
     const platform = config.args.platform ?? "all";
   
     await gobo.tasks.post({ content: {
-      queue: "default",
+      channel: "default",
       name: "workbench",
       details: {}
     }});
@@ -40,7 +212,7 @@ const tasks = {
     const platform = config.args.platform ?? "all";
   
     await gobo.tasks.post({ content: {
-      queue: "default",
+      channel: "default",
       name: "fanout - update identity",
       details: { platform }
     }});
@@ -51,7 +223,7 @@ const tasks = {
     const platform = config.args.platform ?? "all";
   
     await gobo.tasks.post({ content: {
-      queue: "default",
+      channel: "default",
       name: "fanout - pull notifications",
       details: { platform }
     }});
@@ -62,7 +234,7 @@ const tasks = {
     const platform = config.args.platform ?? "all";
   
     await gobo.tasks.post({ content: {
-      queue: "default",
+      channel: "default",
       name: "pull sources fanout",
       details: { platform }
     }});
@@ -73,7 +245,7 @@ const tasks = {
     const platform = config.args.platform ?? "all";
   
     await gobo.tasks.post({ content: {
-      queue: "default",
+      channel: "default",
       name: "pull posts fanout",
       details: { platform }
     }});
@@ -84,7 +256,7 @@ const tasks = {
     const platform = config.args.platform ?? "all";
   
     await gobo.tasks.post({ content: {
-      queue: "default",
+      channel: "default",
       name: "hard reset",
       details: { platform }
     }});
@@ -95,7 +267,7 @@ const tasks = {
     const platform = config.args.platform ?? "all";
   
     await gobo.tasks.post({ content: {
-      queue: "default",
+      channel: "default",
       name: "clear posts",
       details: { platform }
     }});
@@ -106,7 +278,7 @@ const tasks = {
     const platform = config.args.platform ?? "all";
   
     await gobo.tasks.post({ content: {
-      queue: "default",
+      channel: "default",
       name: "clear last retrieved",
       details: { platform }
     }});
@@ -117,7 +289,7 @@ const tasks = {
     const platform = config.args.platform ?? "all";
   
     await gobo.tasks.post({ content: {
-      queue: "default",
+      channel: "default",
       name: "clear notifications",
       details: { platform }
     }});
@@ -128,7 +300,7 @@ const tasks = {
     const platform = config.args.platform ?? "all";
   
     await gobo.tasks.post({ content: {
-      queue: "default",
+      channel: "default",
       name: "clear cursors",
       details: { platform }
     }});
@@ -139,7 +311,7 @@ const tasks = {
     const platform = config.args.platform ?? "all";
   
     await gobo.tasks.post({ content: {
-      queue: "default",
+      channel: "default",
       name: "clear notification cursors",
       details: { platform }
     }});
@@ -170,7 +342,7 @@ const tasks = {
     const gobo = await getGOBO(config);
   
     await gobo.tasks.post({ content: {
-      queue: "default",
+      channel: "default",
       name: "prune resources",
       details: {}
     }});
@@ -181,7 +353,7 @@ const tasks = {
     const identity = await gobo.identity.get({ id: config.args.id });
   
     await gobo.tasks.post({ content: {
-      queue: "default",
+      channel: "default",
       priority: 1,
       name: "flow - onboard sources",
       details: { identity }
@@ -196,7 +368,7 @@ const tasks = {
     }
   
     await gobo.tasks.post({ content: {
-      queue: "default",
+      channel: "default",
       name: "remove person",
       details: { person_id }
     }});
@@ -277,7 +449,7 @@ const tasks = {
     const gobo = await getGOBO(config);
 
     await gobo.tasks.post({ content: {
-      queue: "default",
+      channel: "default",
       name: "bluesky cycle sessions",
       details: {}
     }});
@@ -667,7 +839,7 @@ const tasks = {
     const gobo = await getGOBO(config);
 
     await gobo.tasks.post({ content: {
-      queue: "default",
+      channel: "default",
       name: "bootstrap platform labels",
       details: {}
     }});

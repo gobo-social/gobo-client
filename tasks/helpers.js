@@ -1,7 +1,11 @@
+import FS from "node:fs/promises";
 import fetch from "node-fetch";
 import { getSecret } from "@dashkite/dolores/secrets";
 import { confidential } from "panda-confidential";
 import getGOBOClient from "../src/index.js";
+import { exists } from "./fs.js";
+
+const TOKEN_PATH = 'tasks/access-token.txt';
 
 const Confidential = confidential();
 
@@ -20,26 +24,31 @@ const getFlag = function ( name, config ) {
   return value;
 };
 
-const getToken = async function () {
+const _getToken = async () => {
   const response = await fetch(
-    "https://auth.gobo.social/oauth/token", {
+    "https://gobo.outseta.com/tokens", {
     method: "POST",
     headers: { 
-      "content-type": "application/json"
+      "content-type": "application/x-www-form-urlencoded"
     },
-    body: JSON.stringify({ 
-      grant_type: "password",
-      username: await getSecret("gobo-client-login-test/email"),
+    body: new URLSearchParams({
+      username: await getSecret("gobo-client-login-test/username"),
       password: await getSecret("gobo-client-login-test/password"),
-      audience: "https://gobo.social/api",
-      scope: "admin general",
-      client_id: await getSecret("gobo-client-login-test/client-id"),
-      client_secret: await getSecret("gobo-client-login-test/client-secret") 
-    })
+    }).toString(),
   });
-  
+
   const { access_token } = await response.json();
+  await FS.writeFile(TOKEN_PATH, access_token, {encoding: "utf-8"});
+
   return access_token;
+};
+
+const getToken = async () => {
+  if ( await exists( TOKEN_PATH )) {
+    return FS.readFile(TOKEN_PATH, 'utf-8');
+  } else {
+    return _getToken(); 
+  }
 };
 
 const getGOBO = async function (config) {

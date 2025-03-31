@@ -7,3 +7,8 @@ production:
   gobo:
     base: https://api.gobo.social
     debug: 1
+
+aws:
+  gobo:
+    base: https://gobo-api.freeformflow.com
+    debug: 1

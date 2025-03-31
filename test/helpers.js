@@ -26,20 +26,15 @@ const getConfiguration = async function ( environment ) {
 
 const getToken = async function () {
   const response = await fetch(
-    "https://auth.gobo.social/oauth/token", {
+    "https://gobo.outseta.com/tokens", {
     method: "POST",
     headers: { 
-      "content-type": "application/json"
+      "content-type": "application/x-www-form-urlencoded"
     },
-    body: JSON.stringify({ 
-      grant_type: "password",
-      username: await getSecret("gobo-client-login-test/email"),
+    body: new URLSearchParams({
+      username: await getSecret("gobo-client-login-test/username"),
       password: await getSecret("gobo-client-login-test/password"),
-      audience: "https://gobo.social/api",
-      scope: "admin general",
-      client_id: await getSecret("gobo-client-login-test/client-id"),
-      client_secret: await getSecret("gobo-client-login-test/client-secret") 
-    })
+    }).toString(),
   });
   
   const { access_token } = await response.json();
