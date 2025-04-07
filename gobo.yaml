@@ -24,3 +24,9 @@ client-task-production:
   gobo:
     base: https://api.gobo.social
     debug: 1
+
+client-task-aws:
+  namespace: gobo
+  gobo:
+    base: https://gobo-api.freeformflow.com
+    debug: 1
