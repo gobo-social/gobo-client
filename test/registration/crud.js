@@ -6,7 +6,7 @@ const crud = async function ( $ ) {
 
     await h.test( "create registration", h.target( "registration-crud", async () => {
       registration = await $.gobo.registrations.post({ content: {
-        person_id: 1,
+        person_id: "a",
         platform: "bluesky",
         base_url: "https://bsky.app",
         oauth_token: await h.random(),

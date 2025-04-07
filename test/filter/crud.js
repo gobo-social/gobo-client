@@ -6,7 +6,7 @@ const crud = async function ( $ ) {
 
     await h.test( "create filter", h.target( "filter-crud", async () => {
       filter = await $.gobo.filters.post({ content: {
-        person_id: 1,
+        person_id: "a",
         category: "block keyword",
         active: true,
         configuration: {

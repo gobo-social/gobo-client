@@ -7,9 +7,9 @@ const crud = async function ( $ ) {
     await h.test( "create link", h.target( "link-crud", async () => {
       link = await $.gobo.links.post({ content: {
         origin_type: "A",
-        origin_id: 1,
+        origin_id: "a",
         target_type: "B",
-        target_id: 1,
+        target_id: "a",
         name: await h.random()
       }});
 

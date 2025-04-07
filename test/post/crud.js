@@ -6,7 +6,7 @@ const crud = async function ( $ ) {
 
     await h.test( "create post", h.target( "post-crud", async () => {
       post = await $.gobo.posts.post({ content: {
-        "source_id": 1,
+        "source_id": "a",
         "base_url": "https://bsky.app",
         "platform": "bluesky",
         "platform_id": await h.random(),

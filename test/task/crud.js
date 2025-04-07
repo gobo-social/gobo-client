@@ -6,7 +6,7 @@ const crud = async function ( $ ) {
 
     await h.test( "create task", h.target( "task-crud", async () => {
       task = await $.gobo.tasks.post({ content: {
-        queue: "test",
+        channel: "default",
         name: "test",
         details: { value: await h.random() }
       }});
@@ -32,7 +32,7 @@ const crud = async function ( $ ) {
 
       h.partialEqual( _task, task, [
         "id",
-        "queue",
+        "channel",
         "name",
         "details",
         "created"
